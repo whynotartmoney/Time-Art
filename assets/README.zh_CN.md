@@ -15,6 +15,34 @@
 - 添加字库前评估 Flash 与内部 RAM 影响；ESP32-C3 无 PSRAM。
 - 不提交许可不允许分发的字库。
 
+### 沙漏倒计时
+
+为沙漏计时界面生成的 LVGL 9 点阵字库。源 OpenType 文件不入库。
+
+| 文件 | 尺寸与格式 | 覆盖 | 用途 |
+| --- | --- | --- | --- |
+| [`fonts/sand_font_16.c`](fonts/sand_font_16.c) | 16 px，4 bpp，未压缩 | ASCII `U+0020`–`U+007E` | 标题、选择页提示、`MIN` 单位 |
+| [`fonts/sand_font_32.c`](fonts/sand_font_32.c) | 32 px，4 bpp，未压缩 | 数字 `0`–`9` 和 `:` | 选择页时长和倒计时 |
+| [`fonts/sand_font_64.c`](fonts/sand_font_64.c) | 64 px，4 bpp，未压缩 | `Time` 与 `Over` | 计时结束时居中的两行大字 |
+| [`fonts/OFL-Orbitron.txt`](fonts/OFL-Orbitron.txt) | SIL Open Font License 1.1 | 源字族许可 | 与生成的点阵一起保存 |
+
+来源：Orbitron Medium（`Orbitron Medium.otf`），The League of Moveable Type，SIL OFL 1.1。转换器：`lv_font_conv` 1.5.3。这些 `.c` 由 `main/CMakeLists.txt` 编译，并在沙漏界面标签上显式选用。`tests/test_sand_font_coverage.py` 用 `main/sand_copy.h` 核对 cmap，并确认 U+9F98 不在字库中。
+
+```bash
+lv_font_conv --font "Orbitron Medium.otf" --size 16 --bpp 4 \
+  --format lvgl --no-compress --no-kerning \
+  --lv-font-name sand_font_16 --lv-include lvgl.h \
+  --range 0x20-0x7E --output assets/fonts/sand_font_16.c
+lv_font_conv --font "Orbitron Medium.otf" --size 32 --bpp 4 \
+  --format lvgl --no-compress --no-kerning \
+  --lv-font-name sand_font_32 --lv-include lvgl.h \
+  --range 0x30-0x3A --output assets/fonts/sand_font_32.c
+lv_font_conv --font "Orbitron Medium.otf" --size 64 --bpp 4 \
+  --format lvgl --no-compress --no-kerning \
+  --lv-font-name sand_font_64 --lv-include lvgl.h \
+  --symbols "TimeOver" --output assets/fonts/sand_font_64.c
+```
+
 ## 图片（images）
 
 可复用的源图与生成的显示资产放在 `images/`。

@@ -11,3 +11,8 @@ managed_components/
 /.agents/skills/passport-build
 /.agents/skills/passport-device-test
 /.agents/skills/passport-debug
+/.cursor/skills/passport-develop
+/.cursor/skills/passport-setup
+/.cursor/skills/passport-build
+/.cursor/skills/passport-device-test
+/.cursor/skills/passport-debug

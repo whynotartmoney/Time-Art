@@ -17,6 +17,34 @@ Store reusable font files and generated font sources in `fonts/`.
 - Check Flash and internal-RAM impact before adding a font; the ESP32-C3 has no PSRAM.
 - Do not commit fonts whose license does not permit redistribution.
 
+### Sand countdown
+
+Generated LVGL 9 bitmap fonts for the sand-timer UI. The source OpenType file is not committed.
+
+| File | Size and format | Coverage | Use |
+| --- | --- | --- | --- |
+| [`fonts/sand_font_16.c`](fonts/sand_font_16.c) | 16 px, 4 bpp, uncompressed | ASCII `U+0020`–`U+007E` | Title, picker hints, and the `MIN` unit |
+| [`fonts/sand_font_32.c`](fonts/sand_font_32.c) | 32 px, 4 bpp, uncompressed | Digits `0`–`9` and `:` | Picker durations and the countdown |
+| [`fonts/sand_font_64.c`](fonts/sand_font_64.c) | 64 px, 4 bpp, uncompressed | `Time` and `Over` | Centered end-of-timer message |
+| [`fonts/OFL-Orbitron.txt`](fonts/OFL-Orbitron.txt) | SIL Open Font License 1.1 | License for the source family | Accompanies the generated bitmaps |
+
+Source: Orbitron Medium (`Orbitron Medium.otf`), The League of Moveable Type, SIL OFL 1.1. Converter: `lv_font_conv` 1.5.3. The `.c` files are compiled by `main/CMakeLists.txt` and selected explicitly on the sand-timer labels. `tests/test_sand_font_coverage.py` checks the cmap against `main/sand_copy.h` and treats U+9F98 as absent.
+
+```bash
+lv_font_conv --font "Orbitron Medium.otf" --size 16 --bpp 4 \
+  --format lvgl --no-compress --no-kerning \
+  --lv-font-name sand_font_16 --lv-include lvgl.h \
+  --range 0x20-0x7E --output assets/fonts/sand_font_16.c
+lv_font_conv --font "Orbitron Medium.otf" --size 32 --bpp 4 \
+  --format lvgl --no-compress --no-kerning \
+  --lv-font-name sand_font_32 --lv-include lvgl.h \
+  --range 0x30-0x3A --output assets/fonts/sand_font_32.c
+lv_font_conv --font "Orbitron Medium.otf" --size 64 --bpp 4 \
+  --format lvgl --no-compress --no-kerning \
+  --lv-font-name sand_font_64 --lv-include lvgl.h \
+  --symbols "TimeOver" --output assets/fonts/sand_font_64.c
+```
+
 ## Images
 
 Store reusable source images and generated display assets in `images/`.
