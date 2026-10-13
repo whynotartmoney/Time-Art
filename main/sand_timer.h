@@ -17,6 +17,8 @@
 /* Form and Letter pile this many small pieces. Pomodoro and Stopwatch use the first 32. */
 #define SAND_PILE_COUNT 436
 #define SAND_FORM_DOTS 436
+/* Brightness and volume digits stay on the menu for this long. */
+#define SAND_DIAL_MS 2000
 
 typedef enum {
     SAND_KIND_FORM = 0,
@@ -86,6 +88,7 @@ typedef enum {
     SAND_INPUT_OK,
     SAND_INPUT_OK_LONG,
     SAND_INPUT_UP_LONG,
+    SAND_INPUT_DOWN_LONG,
 } sand_input_t;
 
 typedef struct {
@@ -136,6 +139,11 @@ typedef struct {
     uint32_t overtime_ms;
     sand_grain_t grains[SAND_FORM_DOTS];
     uint32_t rng;
+    /* Menu hold levels. dial 0 means the center digit is hidden. */
+    int light_level;
+    int sound_level;
+    int dial;
+    uint32_t dial_ms;
 } sand_timer_t;
 
 void sand_timer_init(sand_timer_t *timer);
@@ -169,5 +177,9 @@ void sand_format_clock(const sand_timer_t *timer, char *buf, size_t len);
 /* Writes "0%".."100%". A negative reading clears the buffer. */
 void sand_format_soc(int soc, char *buf, size_t len);
 uint32_t sand_color_rgb(int color, int shade);
+/* Brightness steps 1..5 map to 20, 40, 60, 80, and 100 percent. */
+int sand_light_percent(int level);
+/* Volume steps 1..3 map to 30, 55, and 85 percent. */
+int sand_sound_percent(int level);
 void sand_timer_on_input(sand_timer_t *timer, sand_input_t input);
 void sand_timer_tick(sand_timer_t *timer, uint32_t dt_ms);

@@ -32,7 +32,7 @@ static const uint32_t COLOR_RGB[SAND_COLOR_COUNT][3] = {
     {0xCDB892, 0xF3E6C8, 0xFFF8EC},
 };
 
-/* Fire, water, stone, yuan, wood. */
+/* Fire, water, stone, yuan, wood. shade 0 deep, 1 body, 2 highlight. */
 static const uint32_t MATERIAL_RGB[SAND_MATERIAL_COUNT][3] = {
     {0x9A3412, 0xF97316, 0xFDBA74},
     {0x1E3A8A, 0x38BDF8, 0xBAE6FD},
@@ -343,7 +343,7 @@ static void open_setup(sand_timer_t *timer)
 {
     timer->kind = SAND_KIND_FORM;
     timer->phase = SAND_PHASE_SETUP;
-    timer->setup_row = SAND_ROW_TIME;
+    timer->setup_row = SAND_ROW_START;
     timer->typing = false;
     timer->elapsed_ms = 0;
     timer->overtime_ms = 0;
@@ -553,6 +553,22 @@ uint32_t sand_material_rgb(int material, int shade)
     return MATERIAL_RGB[material][shade];
 }
 
+int sand_light_percent(int level)
+{
+    static const int percent[5] = {20, 40, 60, 80, 100};
+    if (level < 1) level = 1;
+    if (level > 5) level = 5;
+    return percent[level - 1];
+}
+
+int sand_sound_percent(int level)
+{
+    static const int percent[3] = {30, 55, 85};
+    if (level < 1) level = 1;
+    if (level > 3) level = 3;
+    return percent[level - 1];
+}
+
 void sand_form_target(const sand_timer_t *timer, int index, uint32_t spin_ms,
                       int *x, int *y, int *size, int *shade)
 {
@@ -575,16 +591,30 @@ void sand_timer_init(sand_timer_t *timer)
     timer->kind = SAND_KIND_FORM;
     timer->preset = 0;
     timer->color = 0;
-    timer->material = SAND_MAT_FIRE;
-    timer->form_time = 0;
-    timer->form_choice = SAND_CHOICE_CIRCLE;
-    timer->setup_row = SAND_ROW_TIME;
+    timer->material = SAND_MAT_YUAN;
+    timer->form_time = 3;
+    timer->form_choice = SAND_CHOICE_DIAMOND;
+    timer->setup_row = SAND_ROW_START;
+    timer->light_level = 3;
+    timer->sound_level = 2;
     timer->rng = 1;
     remember_duration(timer);
 }
 
 void sand_timer_on_input(sand_timer_t *timer, sand_input_t input)
 {
+    if (timer->phase == SAND_PHASE_MENU && input == SAND_INPUT_UP_LONG) {
+        timer->light_level = timer->light_level >= 5 ? 1 : timer->light_level + 1;
+        timer->dial = timer->light_level;
+        timer->dial_ms = SAND_DIAL_MS;
+        return;
+    }
+    if (timer->phase == SAND_PHASE_MENU && input == SAND_INPUT_DOWN_LONG) {
+        timer->sound_level = timer->sound_level >= 3 ? 1 : timer->sound_level + 1;
+        timer->dial = timer->sound_level;
+        timer->dial_ms = SAND_DIAL_MS;
+        return;
+    }
     if (input == SAND_INPUT_UP_LONG) {
         if (timer->kind == SAND_KIND_FORM && timer->phase != SAND_PHASE_MENU
             && timer->phase != SAND_PHASE_PICK) {
@@ -855,6 +885,14 @@ static void tick_rise(sand_timer_t *timer, uint32_t dt_ms)
 
 void sand_timer_tick(sand_timer_t *timer, uint32_t dt_ms)
 {
+    if (timer->dial != 0) {
+        if (dt_ms >= timer->dial_ms) {
+            timer->dial = 0;
+            timer->dial_ms = 0;
+        } else {
+            timer->dial_ms -= dt_ms;
+        }
+    }
     if (timer->phase == SAND_PHASE_DONE) {
         uint32_t room = UINT32_MAX - timer->overtime_ms;
         timer->overtime_ms += dt_ms > room ? room : dt_ms;

@@ -13,6 +13,7 @@ static const char *TAG = "sand_chime";
 #define CHIME_TOTAL_MS 150
 
 static TaskHandle_t s_task;
+static uint8_t s_volume = 55;
 
 static bool write_samples(const int16_t *pcm, int count)
 {
@@ -48,7 +49,7 @@ static void play_once(void)
         ESP_LOGW(TAG, "audio format failed");
         return;
     }
-    bsp_audio_set_volume(55);
+    bsp_audio_set_volume(s_volume);
     /* One short pip. */
     if (!write_tone(1320, CHIME_TOTAL_MS)) return;
 }
@@ -74,4 +75,10 @@ void sand_chime_start(void)
 void sand_chime_play(void)
 {
     if (s_task) xTaskNotifyGive(s_task);
+}
+
+void sand_chime_set_volume(uint8_t percent)
+{
+    if (percent > 100) percent = 100;
+    s_volume = percent;
 }

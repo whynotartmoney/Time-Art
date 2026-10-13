@@ -13,12 +13,13 @@ LV_FONT_DECLARE(sand_font_16);
 LV_FONT_DECLARE(sand_font_32);
 LV_FONT_DECLARE(sand_font_32);
 LV_FONT_DECLARE(sand_font_64);
+LV_FONT_DECLARE(sand_font_64d);
 
-#define COL_BG     0x14110E
+#define COL_BG     0x000000
 #define COL_INK    0xF7F1E6
 #define COL_MUTED  0xB3A79A
 #define COL_VIAL   0x2C261F
-#define COL_ISLAND 0x100E0C
+#define COL_ISLAND 0x000000
 #define COL_BAT_LOW 0xE07A5F
 
 #define VIAL_W 68
@@ -103,6 +104,8 @@ static lv_obj_t *s_grains[SAND_GRAIN_COUNT];
 static lv_obj_t *s_bat_pct;
 static lv_obj_t *s_over_time;
 static lv_obj_t *s_over_word;
+static lv_obj_t *s_span;
+static lv_obj_t *s_dial;
 static bool s_over_shown;
 
 static int s_last_soc = -2;
@@ -114,7 +117,9 @@ static int s_last_row = -1;
 static int s_last_choice = -1;
 static int s_last_form_time = -1;
 static char s_last_clock[8];
+static char s_last_span[8];
 static char s_last_form[16];
+static int s_last_dial = -1;
 static lv_obj_t *s_canvas;
 static int s_canvas_color = -1;
 static bool s_form_ready;
@@ -192,7 +197,11 @@ static void reset_cache(void)
     s_last_choice = -1;
     s_last_form_time = -1;
     s_last_clock[0] = '\0';
+    s_last_span[0] = '\0';
     s_last_form[0] = '\0';
+    s_last_dial = -1;
+    s_span = NULL;
+    s_dial = NULL;
     s_over_shown = false;
     s_canvas = NULL;
     s_canvas_color = -1;
@@ -274,6 +283,8 @@ static void build_menu(void)
     s_form = NULL;
     s_over_time = NULL;
     s_over_word = NULL;
+    s_span = NULL;
+    s_dial = NULL;
     for (int i = 0; i < SAND_GRAIN_COUNT; i++) s_grains[i] = NULL;
     for (int i = 0; i < SAND_PRESET_COUNT; i++) {
         s_vial[i].shell = NULL;
@@ -288,6 +299,9 @@ static void build_menu(void)
     s_bat_pct = label(scr, "0%", &sand_font_16, COL_INK);
     style_readout(s_bat_pct);
     lv_obj_align(s_bat_pct, LV_ALIGN_TOP_RIGHT, -12, 10);
+    s_dial = label(scr, "1", &sand_font_32, COL_INK);
+    lv_obj_align(s_dial, LV_ALIGN_TOP_MID, 0, 2);
+    lv_obj_add_flag(s_dial, LV_OBJ_FLAG_HIDDEN);
 
     for (int i = 0; i < SAND_MENU_COUNT; i++) {
         int y = CARD_Y0 + i * (CARD_H + CARD_GAP);
@@ -330,8 +344,26 @@ static void build_menu(void)
     s_mode = UI_MENU;
 }
 
+static void paint_dial(const sand_timer_t *timer)
+{
+    char text[2];
+    if (!s_dial || timer->dial == s_last_dial) return;
+    if (timer->dial >= 1 && timer->dial <= 5) {
+        text[0] = (char)('0' + timer->dial);
+        text[1] = '\0';
+        lv_label_set_text(s_dial, text);
+        if (lv_obj_has_flag(s_dial, LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_remove_flag(s_dial, LV_OBJ_FLAG_HIDDEN);
+        }
+    } else if (!lv_obj_has_flag(s_dial, LV_OBJ_FLAG_HIDDEN)) {
+        lv_obj_add_flag(s_dial, LV_OBJ_FLAG_HIDDEN);
+    }
+    s_last_dial = timer->dial;
+}
+
 static void paint_menu(const sand_timer_t *timer)
 {
+    paint_dial(timer);
     if (timer->menu == s_last_menu && timer->color == s_last_color) return;
     for (int i = 0; i < SAND_MENU_COUNT; i++) {
         bool selected = i == timer->menu;
@@ -377,6 +409,8 @@ static void build_pick(void)
     s_hint = NULL;
     s_over_time = NULL;
     s_over_word = NULL;
+    s_span = NULL;
+    s_dial = NULL;
     for (int i = 0; i < SAND_GRAIN_COUNT; i++) s_grains[i] = NULL;
 
     lv_obj_t *scr = make_screen();
@@ -461,6 +495,8 @@ static void build_setup(void)
     s_form = NULL;
     s_over_time = NULL;
     s_over_word = NULL;
+    s_span = NULL;
+    s_dial = NULL;
     s_swatch = NULL;
     for (int i = 0; i < SAND_GRAIN_COUNT; i++) s_grains[i] = NULL;
 
@@ -554,6 +590,8 @@ static void build_letter(void)
     s_form = NULL;
     s_over_time = NULL;
     s_over_word = NULL;
+    s_span = NULL;
+    s_dial = NULL;
     s_swatch = NULL;
     for (int i = 0; i < SAND_GRAIN_COUNT; i++) s_grains[i] = NULL;
 
@@ -701,8 +739,11 @@ static void build_form(const sand_timer_t *timer)
     style_readout(s_bat_pct);
     lv_obj_align(s_bat_pct, LV_ALIGN_TOP_RIGHT, -12, 10);
 
-    s_over_time = label(scr, "00:00", &sand_font_32, COL_INK);
-    lv_obj_align(s_over_time, LV_ALIGN_CENTER, 0, 0);
+    s_span = label(scr, "00:00", &sand_font_32, COL_INK);
+    lv_obj_align(s_span, LV_ALIGN_CENTER, 0, -40);
+    lv_obj_add_flag(s_span, LV_OBJ_FLAG_HIDDEN);
+    s_over_time = label(scr, "00:00", &sand_font_64d, COL_INK);
+    lv_obj_align(s_over_time, LV_ALIGN_CENTER, 0, 16);
     s_over_word = label(scr, SAND_STR_OVER, &sand_font_64, COL_BG);
     lv_obj_add_flag(s_over_time, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s_over_word, LV_OBJ_FLAG_HIDDEN);
@@ -728,6 +769,8 @@ static void build_rise(const sand_timer_t *timer)
     s_form = NULL;
     s_over_time = NULL;
     s_over_word = NULL;
+    s_span = NULL;
+    s_dial = NULL;
     for (int i = 0; i < SAND_PRESET_COUNT; i++) {
         s_vial[i].shell = NULL;
         s_vial[i].pile = NULL;
@@ -1160,15 +1203,28 @@ static void paint_stipple(const sand_timer_t *timer)
     }
 }
 
+static void format_span(const sand_timer_t *timer, char *buf, size_t len)
+{
+    uint32_t total = timer->duration_ms / 1000u;
+    unsigned minutes = (unsigned)(total / 60u);
+    unsigned seconds = (unsigned)(total % 60u);
+    if (minutes > 99u) minutes = 99u;
+    snprintf(buf, len, "%02u:%02u", minutes, seconds);
+}
+
 static void paint_center_clock(const sand_timer_t *timer)
 {
     bool show = timer->phase == SAND_PHASE_DONE
         && (timer->kind == SAND_KIND_FORM || timer->kind == SAND_KIND_LETTER);
+    char span[8];
     if (!s_over_time) return;
     if (!show) {
         if (timer->kind == SAND_KIND_FORM || timer->kind == SAND_KIND_LETTER) {
             if (!lv_obj_has_flag(s_over_time, LV_OBJ_FLAG_HIDDEN)) {
                 lv_obj_add_flag(s_over_time, LV_OBJ_FLAG_HIDDEN);
+            }
+            if (s_span && !lv_obj_has_flag(s_span, LV_OBJ_FLAG_HIDDEN)) {
+                lv_obj_add_flag(s_span, LV_OBJ_FLAG_HIDDEN);
             }
             if (s_time && lv_obj_has_flag(s_time, LV_OBJ_FLAG_HIDDEN)) {
                 lv_obj_remove_flag(s_time, LV_OBJ_FLAG_HIDDEN);
@@ -1177,9 +1233,21 @@ static void paint_center_clock(const sand_timer_t *timer)
         return;
     }
     lv_label_set_text(s_over_time, s_last_clock);
-    lv_obj_align(s_over_time, LV_ALIGN_CENTER, 0, 0);
     if (lv_obj_has_flag(s_over_time, LV_OBJ_FLAG_HIDDEN)) {
+        lv_obj_align(s_over_time, LV_ALIGN_CENTER, 0, 16);
         lv_obj_remove_flag(s_over_time, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (s_span) {
+        format_span(timer, span, sizeof(span));
+        if (strcmp(span, s_last_span) != 0) {
+            lv_label_set_text(s_span, span);
+            memcpy(s_last_span, span, sizeof(s_last_span));
+        }
+        if (lv_obj_has_flag(s_span, LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_align(s_span, LV_ALIGN_CENTER, 0, -40);
+            lv_obj_remove_flag(s_span, LV_OBJ_FLAG_HIDDEN);
+        }
+        lv_obj_move_foreground(s_span);
     }
     if (s_over_word && !lv_obj_has_flag(s_over_word, LV_OBJ_FLAG_HIDDEN)) {
         lv_obj_add_flag(s_over_word, LV_OBJ_FLAG_HIDDEN);

@@ -1,8 +1,10 @@
 // 沙漏计时。屏幕、按键和电量走 BSP；页面和计时模型在 main。
 //
-// 目录：Form 在最上，其下是 Letter、Pomodoro、Stopwatch。上/下选择，确定进入，长按上键换色。
+// 目录：Form 在最上，其下是 Letter、Pomodoro、Stopwatch。上/下选择，确定进入。
+// 目录里长按上键切换亮度 1-5，长按下键切换音量 1-3。数字在上方中间显示 2 秒后消失。
 // Form：小小的几何粒带重力随机落下，方向不固定，堆到画面顶时倒计时刚好结束。换形状或材质只影响新落下的粒。
-// Letter：小粗体字母同样落下。换字母或颜色只影响新落下的粒。结束时一声短音，画面中央以原始字号正向计时。
+// Letter：小粗体字母同样落下。换字母或颜色只影响新落下的粒。结束时一声短音。
+// 正向计时用两倍清晰字号，上方以一半大小显示所选时间。
 // Pomodoro：再选 10、20、30 分钟。沙粒往下掉并堆积，时间到后响一声并正向计时。
 // Stopwatch：左上角从 00:00 正向计时。沙粒只在时间下方往上升，不盖住文字，也不堆积。
 //           确定暂停或继续，长按确定回到目录。
@@ -30,7 +32,6 @@ static const char *TAG = "sand";
 #define FRAME_MS 16
 #define IDLE_DIM_US (45LL * 1000 * 1000)
 #define BATTERY_PERIOD_US (5LL * 1000 * 1000)
-#define BACKLIGHT_ACTIVE 68
 #define BACKLIGHT_IDLE 12
 
 typedef struct {
@@ -50,6 +51,10 @@ static bool map_input(bsp_btn_t btn, bsp_btn_ev_t event, sand_input_t *input)
     }
     if (event == BSP_BTN_LONG && btn == BSP_BTN_UP) {
         *input = SAND_INPUT_UP_LONG;
+        return true;
+    }
+    if (event == BSP_BTN_LONG && btn == BSP_BTN_DOWN) {
+        *input = SAND_INPUT_DOWN_LONG;
         return true;
     }
     if (event != BSP_BTN_CLICK) return false;
@@ -104,10 +109,11 @@ static void app_task(void *arg)
             last_battery = now;
         }
 
-        uint8_t level = BACKLIGHT_ACTIVE;
+        uint8_t level = (uint8_t)sand_light_percent(s_timer.light_level);
         if (s_timer.phase != SAND_PHASE_RUNNING && now - last_input >= IDLE_DIM_US) {
             level = BACKLIGHT_IDLE;
         }
+        sand_chime_set_volume((uint8_t)sand_sound_percent(s_timer.sound_level));
         if (level != backlight) {
             bsp_display_backlight(level);
             backlight = level;
@@ -139,7 +145,8 @@ void app_main(void)
                  BSP_LCD_MOSI, BSP_LCD_SCLK, BSP_LCD_CS, BSP_LCD_DC, BSP_LCD_BL);
         return;
     }
-    bsp_display_backlight(BACKLIGHT_ACTIVE);
+    bsp_display_backlight((uint8_t)sand_light_percent(s_timer.light_level));
+    sand_chime_set_volume((uint8_t)sand_sound_percent(s_timer.sound_level));
 
     if (bsp_battery_init() != ESP_OK) {
         ESP_LOGW(TAG, "battery gauge unavailable");

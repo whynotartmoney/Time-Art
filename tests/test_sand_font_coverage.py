@@ -13,6 +13,7 @@ UI_SOURCES = (ROOT / "main" / "sand_ui.c", ROOT / "main" / "main.c")
 FONT_16 = ROOT / "assets" / "fonts" / "sand_font_16.c"
 FONT_32 = ROOT / "assets" / "fonts" / "sand_font_32.c"
 FONT_64 = ROOT / "assets" / "fonts" / "sand_font_64.c"
+FONT_64D = ROOT / "assets" / "fonts" / "sand_font_64d.c"
 MISSING = 0x9F98  # 龜, intentionally outside the UI inventory
 
 
@@ -75,9 +76,10 @@ class SandFontCoverageTest(unittest.TestCase):
         self.assertTrue(all(cp < 128 for cp in codes))
         for word in ("SAND", "Pomodoro", "Stopwatch", "Form", "MIN", "Shape", "Color",
                      "Start", "Circle", "Square", "Triangle", "Diamond", "Hexagon", "Rectangle",
-                     "Material", "Fire", "Water", "Stone", "Yuan", "Wood", "Letter", "ABC",
+                     "Material", "Fire", "Water", "Stone", "Yuan", "Wood",
+                     "Letter", "ABC",
                      "UP/DN PICK", "OK OPEN", "OK START", "UP/DN MOVE", "OK SET",
-                     "HOLD OK BACK", "HOLD UP COLOR", "Time", "Over"):
+                     "HOLD OK BACK", "UP LIGHT", "DN SOUND", "Time", "Over"):
             self.assertIn(word, text)
 
     def test_font_16_covers_copy_ascii_and_rejects_a_missing_glyph(self) -> None:
@@ -93,6 +95,14 @@ class SandFontCoverageTest(unittest.TestCase):
 
     def test_font_32_covers_countdown_glyphs(self) -> None:
         covered = cmap_codepoints(FONT_32.read_text(encoding="utf-8"))
+        needed = set(range(ord("0"), ord("9") + 1))
+        needed.add(ord(":"))
+        self.assertTrue(needed.issubset(covered))
+        self.assertNotIn(ord("A"), covered)
+        self.assertNotIn(MISSING, covered)
+
+    def test_font_64d_covers_countdown_glyphs(self) -> None:
+        covered = cmap_codepoints(FONT_64D.read_text(encoding="utf-8"))
         needed = set(range(ord("0"), ord("9") + 1))
         needed.add(ord(":"))
         self.assertTrue(needed.issubset(covered))
